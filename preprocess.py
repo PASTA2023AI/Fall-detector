@@ -3,8 +3,10 @@ import pandas as pd
 import numpy as np
 import os
 
-FPS = 16
-DURATION = 1.5
+FPS = 14
+DURATION = 2.5
+
+
     
 def preprocess():
     dfs = []
@@ -15,7 +17,7 @@ def preprocess():
             path = f'dataset/input/{dir}/videos/'
             print(path + row['File name'] +'.mp4')
             keypoints = get_pose_data(FPS, DURATION, path + row['File name'] + '.mp4', True, False)
-            if keypoints.shape == (23, 132):
+            if keypoints.shape == (34, 132):
                 os.makedirs(path, exist_ok=True)  
                 keypoints.to_csv(path + row['File name'] + '.csv')
                 # Add a column 'fall' with value 1 for a fall or 0 otherwise
