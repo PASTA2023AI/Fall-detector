@@ -1,29 +1,30 @@
 
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from keras import backend as K
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from utils import get_pose_data
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
-import pickle
+import coral_ordinal as coral
 
-gru_output_size = 50   #no of nodes
-fc1_size = 8
+gru_output_size = 32   #no of nodes
+fc1_size = 4
 fc2_size = 1
 
 
 #MODEL 
-mymodel = tf.keras.Sequential([        #keras.sequential requires a list input
+model = tf.keras.Sequential([        #keras.sequential requires a list input
     tf.keras.layers.GRU(gru_output_size),   #trains model on sequence of trends = distance/angles etc bw keypoints changes
     #tf.keras.layers.Dense(fc1_size),
     tf.keras.layers.Dense(fc2_size, activation='sigmoid')
 ])
 
         
-mymodel.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=0.01, beta_1=0.99, beta_2=0.999, epsilon=1e-7),   #dy/dx -- y=loss, x=predicted values, x depends of weights
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(lr=0.01, beta_1=0.99, beta_2=0.999, epsilon=1e-7),   #dy/dx -- y=loss, x=predicted values, x depends of weights
     loss=tf.keras.losses.BinaryCrossentropy(),  #broadly loss = y actual - y predicted before the model exsists
-    metrics=tf.keras.metrics.MeanAbsoluteError())
+    metrics=tf.keras.metrics.F1Score())
 
 
 #TRAIN
@@ -34,7 +35,7 @@ x = df['File name']
 y = df['fall']
 
 X_train, X_test, y_train, y_test = train_test_split(x,y,
-                                   random_state=10,
+                                   random_state=100,
                                    test_size=0.1,
                                    shuffle=True)
 print('Data has been split')
@@ -73,13 +74,13 @@ pose_data_test = tf.stack(pose_list_test)
 pose_label_data_test = tf.convert_to_tensor(y_test, dtype=tf.float32) 
 
 
-cb = [EarlyStopping(patience = 15, min_delta = 0.001, restore_best_weights = True)]
+cb = [tf.keras.callbacks.EarlyStopping(patience = 20, min_delta = 0.001, restore_best_weights = True)]
 
 
 print (">>>>>", pose_label_data_test)
 # The history variable consists data about the training phase
 # See - https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/History
-history = mymodel.fit(
+history = model.fit(
     x=pose_data,
     y=pose_label_data,
     epochs= 500,              #how many times the model will be trained for the train set
@@ -89,10 +90,14 @@ history = mymodel.fit(
     verbose=1,  #to visually seperate output for easier analysis
 )
 
+# Save the entire model to a file
+model.save('fall_detection.h5')
+
 #visualising the loss trends
 training_loss = history.history['loss']
 test_loss = history.history['val_loss']
-
+training_f1 = history.history['f1_score']
+test_f1 = history.history['val_f1_score']
 
 epoch_count = range(1, len(training_loss) + 1)
 plt.plot(epoch_count, training_loss, 'r--')
@@ -102,15 +107,13 @@ plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.show()
 
+plt.plot(epoch_count, training_f1, 'g--')
+plt.plot(epoch_count, test_f1, 'm-')
+plt.legend(['Training F1', 'Test F1'])
+plt.xlabel('Epoch')
+plt.ylabel('F1 Score')
+plt.show()
 
-test_loss, test_mae = mymodel.evaluate(pose_data_test, pose_label_data_test)
-print("Test Loss: ", {test_loss})
-print("Test MAE: ", {test_mae})
-
-
-#SAVE MODEL
-'''
-Pkl_FallDetector = "FallDetector.pkl"
-with open(Pkl_FallDetector, 'wb') as file:  
-    pickle.dump(mymodel, file)
-'''
+test_loss, test_f1 = model.evaluate(pose_data_test, pose_label_data_test)
+print("Test F1 Score: ",{float(test_f1) * 100},"%")
+model.summary()

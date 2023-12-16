@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 import pandas as pd
 
-
+#Returns a dictionary of all the keypoint names
 def pose_landmark_to_dict(results, mp_pose, pose_data_dict):
     '''
     Helper function to extract all 33 landmarks and return as a dictionary for easy conversion to pandas dataframe 
@@ -45,7 +45,7 @@ def pose_landmark_to_dict(results, mp_pose, pose_data_dict):
         "LEFT_FOOT_INDEX": mp_pose.PoseLandmark.LEFT_FOOT_INDEX,
         "RIGHT_FOOT_INDEX": mp_pose.PoseLandmark.RIGHT_FOOT_INDEX
     }
-
+    #Creates dictionary keys for each kaypoint's x,y,z,v values
     for key in pose_landmark_names:
         # Get the landmark data (x , y , z , visibility)
         landmark_data = results.pose_landmarks.landmark[pose_landmark_names[key]]
@@ -65,7 +65,7 @@ def pose_landmark_to_dict(results, mp_pose, pose_data_dict):
 
     return pose_data_dict
 
-
+#Get all the keypoints of a video frame by frame
 def get_pose_data(fps, duration, FILE_PATH, annotate_image=True, print_landmarks=True):
     '''
     Extract the pose landmarks using mediapipe and cv2 from a .avi file. 
@@ -109,7 +109,6 @@ def get_pose_data(fps, duration, FILE_PATH, annotate_image=True, print_landmarks
             success, image = cap.read()
             if not success:
                 print("Ignoring empty file frame.")
-                # If loading a video, use 'break' instead of 'continue'.
                 continue
 
             # To improve performance, optionally mark the image as not writeable to
@@ -150,7 +149,7 @@ def get_pose_data(fps, duration, FILE_PATH, annotate_image=True, print_landmarks
             cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
 
     cap.release()
-    print('hi', pd.DataFrame(data=pose_data_dict))
+    print(pd.DataFrame(data=pose_data_dict))
     print(cv2.__version__)
     return pd.DataFrame(data=pose_data_dict)
-    # return pose_data_dict
+    #return pose_data_dict
